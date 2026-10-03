@@ -1,0 +1,247 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  CAJERO
+  CLIENTE
+}
+
+enum OrderSource {
+  WEB
+  SOCIAL
+}
+
+enum OrderStatus {
+  PENDIENTE
+  PAGO
+  EN_CAMINO
+  ENTREGADO
+  CANCELADO
+}
+
+enum PaymentMethod {
+  DINERO
+  TARJETA
+  PIX
+  QR
+}
+
+enum PaymentStatus {
+  PENDIENTE
+  COMPLETO
+  FRACASADO
+  CANCELADO
+}
+
+enum CashRegisterStatus {
+  OPEN
+  CLOSED
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer      Customer?
+  cashRegisters CashRegister[]
+}
+
+model Customer {
+  id       Int    @id @default(autoincrement())
+  userId   Int    @unique
+  phone    String
+  document String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id])
+  addresses Address[]
+  cart      Cart?
+  orders    Order[]
+}
+
+model Address {
+  id         Int     @id @default(autoincrement())
+  customerId Int
+  street     String
+  number     String
+  complement String?
+  city       String
+  reference  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id])
+}
+
+model Category {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+}
+
+model Product {
+  id               Int     @id @default(autoincrement())
+  categoryId       Int
+  name             String
+  description      String?
+  acquisitionPrice Decimal
+  salePrice        Decimal
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  category   Category    @relation(fields: [categoryId], references: [id])
+  inventory  Inventory?
+  saleItems  SaleItem[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+}
+
+model Inventory {
+  id        Int @id @default(autoincrement())
+  productId Int @unique
+  quantity  Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Cart {
+  id         Int @id @default(autoincrement())
+  customerId Int @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer Customer   @relation(fields: [customerId], references: [id])
+  items    CartItem[]
+}
+
+model CartItem {
+  id        Int @id @default(autoincrement())
+  cartId    Int
+  productId Int
+  quantity  Int
+
+  cart    Cart    @relation(fields: [cartId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  @@unique([cartId, productId])
+}
+
+model Order {
+  id         Int         @id @default(autoincrement())
+  customerId Int
+  source     OrderSource
+  status     OrderStatus
+  total      Decimal
+
+  shippingStreet     String
+  shippingNumber     String
+  shippingComplement String?
+  shippingCity       String
+  shippingReference  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer Customer    @relation(fields: [customerId], references: [id])
+  items    OrderItem[]
+  payments Payment[]
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  quantity  Int
+  unitPrice Decimal
+  subtotal  Decimal
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id      Int           @id @default(autoincrement())
+  saleId  Int?
+  orderId Int?
+  amount  Decimal
+  method  PaymentMethod
+  status  PaymentStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactionId String?       @unique
+
+  sale  Sale?  @relation(fields: [saleId], references: [id])
+  order Order? @relation(fields: [orderId], references: [id])
+}
+
+model Sale {
+  id             Int     @id @default(autoincrement())
+  cashRegisterId Int
+  total          Decimal
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cashRegister CashRegister @relation(fields: [cashRegisterId], references: [id])
+  items        SaleItem[]
+  payments     Payment[]
+}
+
+model SaleItem {
+  id        Int     @id @default(autoincrement())
+  saleId    Int
+  productId Int
+  quantity  Int
+  unitPrice Decimal
+  subtotal  Decimal
+
+  sale    Sale    @relation(fields: [saleId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model CashRegister {
+  id            Int                @id @default(autoincrement())
+  userId        Int
+  openingAmount Decimal
+  closingAmount Decimal?
+  openedAt      DateTime
+  closedAt      DateTime?
+  status        CashRegisterStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id])
+  sales Sale[]
+}
