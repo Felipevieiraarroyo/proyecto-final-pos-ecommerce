@@ -1,24 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsEmail,
-  IsInt,
-  IsNotEmpty,
-  IsPositive,
-  IsString,
-} from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateCustomerDto {
   @ApiProperty({
-    example: 3,
-    description: 'ID do usuário associado ao cliente.',
-  })
-  @IsInt()
-  @IsPositive()
-  userId: number;
-
-  @ApiProperty({
     example: 'cliente@proyectofinal.com',
-    description: 'Email de contato do cliente.',
+    description: 'Email do cliente.',
   })
   @IsEmail()
   email: string;

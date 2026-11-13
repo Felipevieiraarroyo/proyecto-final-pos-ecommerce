@@ -1,16 +1,22 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateSaleDto } from './dto/create-sale.dto.js';
 
+interface AuthenticatedUser {
+  sub: number;
+  role: string;
+}
+
 @Injectable()
 export class SalesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createSaleDto: CreateSaleDto) {
+  async create(createSaleDto: CreateSaleDto, user: AuthenticatedUser) {
     return this.prisma.$transaction(async (tx) => {
       const cashRegister = await tx.cashRegister.findUnique({
         where: {
@@ -25,6 +31,12 @@ export class SalesService {
       if (cashRegister.status !== 'OPEN') {
         throw new BadRequestException(
           'O caixa precisa estar aberto para realizar uma venda',
+        );
+      }
+
+      if (user.role === 'CAJERO' && cashRegister.userId !== user.sub) {
+        throw new ForbiddenException(
+          'Você só pode realizar vendas no seu próprio caixa',
         );
       }
 
@@ -60,8 +72,8 @@ export class SalesService {
           );
         }
 
-       const unitPrice = Number(product.salePrice);
-       const subtotal = Math.round(unitPrice * item.quantity * 100) / 100;
+        const unitPrice = Number(product.salePrice);
+        const subtotal = Math.round(unitPrice * item.quantity * 100) / 100;
 
         total = Math.round((total + subtotal) * 100) / 100;
 
@@ -73,27 +85,26 @@ export class SalesService {
         });
       }
 
-      const paymentAmount =
-        Math.round(createSaleDto.paymentAmount * 100) / 100;
+      const paymentAmount = Math.round(createSaleDto.paymentAmount * 100) / 100;
 
-        if (paymentAmount !== total) {
+      if (paymentAmount !== total) {
         throw new BadRequestException(
           `O pagamento deve ser igual ao total da venda: ${total}`,
         );
       }
 
       const sale = await tx.sale.create({
-  data: {
-    cashRegisterId: cashRegister.id,
-    total,
-    items: {
-      create: saleItems,
-    },
-  },
-  include: {
-    items: true,
-  },
-});
+        data: {
+          cashRegisterId: cashRegister.id,
+          total,
+          items: {
+            create: saleItems,
+          },
+        },
+        include: {
+          items: true,
+        },
+      });
 
       for (const item of createSaleDto.items) {
         await tx.inventory.update({

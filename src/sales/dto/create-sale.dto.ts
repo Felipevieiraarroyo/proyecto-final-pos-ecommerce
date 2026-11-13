@@ -67,5 +67,11 @@ export class CreateSaleDto {
     enum: ['DINERO', 'TARJETA', 'PIX', 'QR'],
     description: 'Método utilizado para pagamento.',
   })
-  paymentMethod: 'DINERO' | 'TARJETA' | 'PIX' | 'QR';
+  @ApiProperty({
+    example: 'PIX',
+    enum: PaymentMethod,
+    description: 'Método utilizado para pagamento.',
+  })
+  @IsEnum(PaymentMethod)
+  paymentMethod: PaymentMethod;
 }

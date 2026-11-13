@@ -58,6 +58,7 @@ model User {
   role      UserRole
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+mustChangePassword Boolean @default(false)
 
   customer      Customer?
   cashRegisters CashRegister[]
@@ -109,8 +110,8 @@ model Product {
   categoryId       Int
   name             String
   description      String?
-  acquisitionPrice Decimal
-  salePrice        Decimal
+  acquisitionPrice Decimal @db.Decimal(12, 2)
+salePrice        Decimal @db.Decimal(12, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

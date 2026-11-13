@@ -1,7 +1,4 @@
-import {
-  ApiProperty,
-  ApiPropertyOptional,
-} from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import {
   IsInt,
@@ -38,18 +35,19 @@ export class CreateProductDto {
   description?: string;
 
   @ApiProperty({
-    example: 120,
-    description: 'Preço de aquisição do produto.',
+    example: 120.5,
+    description:
+      'Preço de aquisição do produto (máximo de duas casas decimais).',
   })
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
   acquisitionPrice: number;
 
   @ApiProperty({
     example: 199.9,
-    description: 'Preço de venda do produto.',
+    description: 'Preço de venda do produto (máximo de duas casas decimais).',
   })
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
   salePrice: number;
 }
