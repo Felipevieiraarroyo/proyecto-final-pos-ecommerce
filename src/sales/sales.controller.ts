@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 
 import {
   ApiBearerAuth,
@@ -25,6 +25,34 @@ interface AuthenticatedRequest {
 @Controller('sales')
 export class SalesController {
   constructor(private readonly salesService: SalesService) {}
+
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'CAJERO')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Consultar histórico de vendas',
+    description:
+      'ADMIN consulta todas as vendas. CAJERO consulta somente as vendas dos próprios caixas.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Histórico de vendas retornado com sucesso.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Não autenticado.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso não permitido.',
+  })
+  findAll(@Req() req: AuthenticatedRequest) {
+    return this.salesService.findAll({
+      sub: req.user.id,
+      role: req.user.role,
+    });
+  }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)

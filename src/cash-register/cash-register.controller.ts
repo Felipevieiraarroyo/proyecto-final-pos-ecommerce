@@ -34,15 +34,12 @@ import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-requ
 @Roles('CAJERO')
 @Controller('cash-register')
 export class CashRegisterController {
-  constructor(
-    private readonly cashRegisterService: CashRegisterService,
-  ) {}
+  constructor(private readonly cashRegisterService: CashRegisterService) {}
 
   @Post('open')
   @ApiOperation({
     summary: 'Abrir caixa',
-    description:
-      'Abre um novo caixa para o operador autenticado.',
+    description: 'Abre um novo caixa para o operador autenticado.',
   })
   @ApiResponse({
     status: 201,
@@ -65,17 +62,13 @@ export class CashRegisterController {
     @Req() request: AuthenticatedRequest,
     @Body() openCashRegisterDto: OpenCashRegisterDto,
   ) {
-    return this.cashRegisterService.open(
-      request.user.id,
-      openCashRegisterDto,
-    );
+    return this.cashRegisterService.open(request.user.id, openCashRegisterDto);
   }
 
   @Get('open')
   @ApiOperation({
     summary: 'Consultar caixa aberto',
-    description:
-      'Retorna o caixa aberto do operador autenticado.',
+    description: 'Retorna o caixa aberto do operador autenticado.',
   })
   @ApiResponse({
     status: 200,
@@ -95,9 +88,7 @@ export class CashRegisterController {
     description: 'Nenhum caixa aberto encontrado.',
   })
   findOpen(@Req() request: AuthenticatedRequest) {
-    return this.cashRegisterService.findOpen(
-      request.user.id,
-    );
+    return this.cashRegisterService.findOpen(request.user.id);
   }
 
   @Patch(':id/close')
@@ -143,10 +134,12 @@ export class CashRegisterController {
   })
   close(
     @Param('id', ParseIntPipe) id: number,
+    @Req() request: AuthenticatedRequest,
     @Body() closeCashRegisterDto: CloseCashRegisterDto,
   ) {
     return this.cashRegisterService.close(
       id,
+      request.user.id,
       closeCashRegisterDto,
     );
   }

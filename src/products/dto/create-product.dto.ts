@@ -7,9 +7,20 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  Min,
 } from 'class-validator';
 
 export class CreateProductDto {
+  @ApiPropertyOptional({
+    example: 10,
+    description: 'Quantidade inicial em estoque.',
+    minimum: 0,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  initialQuantity?: number;
+
   @ApiProperty({
     example: 1,
     description: 'ID da categoria.',

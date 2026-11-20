@@ -16,6 +16,48 @@ interface AuthenticatedUser {
 export class SalesService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findAll(user: AuthenticatedUser) {
+    const where =
+      user.role === 'CAJERO'
+        ? {
+            cashRegister: {
+              is: {
+                userId: user.sub,
+              },
+            },
+          }
+        : undefined;
+
+    return this.prisma.sale.findMany({
+      where,
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        payments: true,
+        cashRegister: {
+          select: {
+            id: true,
+            userId: true,
+            openedAt: true,
+            closedAt: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
   async create(createSaleDto: CreateSaleDto, user: AuthenticatedUser) {
     return this.prisma.$transaction(async (tx) => {
       const cashRegister = await tx.cashRegister.findUnique({

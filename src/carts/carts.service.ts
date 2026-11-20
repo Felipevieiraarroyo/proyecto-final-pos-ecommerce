@@ -5,47 +5,131 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AddCartItemDto } from './dto/add-cart-item.dto.js';
+import { UpdateCartItemDto } from './dto/update-cart-item.dto.js';
 
 @Injectable()
 export class CartsService {
+  async updateItemByUser(
+    userId: number,
+    itemId: number,
+    updateCartItemDto: UpdateCartItemDto,
+  ) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { userId },
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Cliente não encontrado para este usuário');
+    }
+
+    const cart = await this.prisma.cart.findUnique({
+      where: { customerId: customer.id },
+    });
+
+    if (!cart) {
+      throw new NotFoundException('Carrinho não encontrado');
+    }
+
+    const item = await this.prisma.cartItem.findFirst({
+      where: {
+        id: itemId,
+        cartId: cart.id,
+      },
+      include: {
+        product: {
+          include: {
+            inventory: true,
+          },
+        },
+      },
+    });
+
+    if (!item) {
+      throw new NotFoundException('Item não encontrado no seu carrinho');
+    }
+
+    if (!item.product.inventory) {
+      throw new BadRequestException('Produto não possui estoque');
+    }
+
+    if (item.product.inventory.quantity < updateCartItemDto.quantity) {
+      throw new BadRequestException(
+        `Estoque insuficiente para ${item.product.name}`,
+      );
+    }
+
+    return this.prisma.cartItem.update({
+      where: { id: item.id },
+      data: {
+        quantity: updateCartItemDto.quantity,
+      },
+      include: {
+        product: true,
+      },
+    });
+  }
+
+  async removeItemByUser(userId: number, itemId: number) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { userId },
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Cliente não encontrado para este usuário');
+    }
+
+    const cart = await this.prisma.cart.findUnique({
+      where: { customerId: customer.id },
+    });
+
+    if (!cart) {
+      throw new NotFoundException('Carrinho não encontrado');
+    }
+
+    const item = await this.prisma.cartItem.findFirst({
+      where: {
+        id: itemId,
+        cartId: cart.id,
+      },
+    });
+
+    if (!item) {
+      throw new NotFoundException('Item não encontrado no seu carrinho');
+    }
+
+    return this.prisma.cartItem.delete({
+      where: { id: item.id },
+    });
+  }
+
   constructor(private readonly prisma: PrismaService) {}
 
-  async addItemByUser(
-  userId: number,
-  addCartItemDto: AddCartItemDto,
-) {
-  const customer = await this.prisma.customer.findUnique({
-    where: {
-      userId,
-    },
-  });
+  async addItemByUser(userId: number, addCartItemDto: AddCartItemDto) {
+    const customer = await this.prisma.customer.findUnique({
+      where: {
+        userId,
+      },
+    });
 
-  if (!customer) {
-    throw new NotFoundException(
-      'Cliente não encontrado para este usuário',
-    );
+    if (!customer) {
+      throw new NotFoundException('Cliente não encontrado para este usuário');
+    }
+
+    return this.addItem(customer.id, addCartItemDto);
   }
-
-  return this.addItem(
-    customer.id,
-    addCartItemDto,
-  );
-}
   async findByUser(userId: number) {
-  const customer = await this.prisma.customer.findUnique({
-    where: {
-      userId,
-    },
-  });
+    const customer = await this.prisma.customer.findUnique({
+      where: {
+        userId,
+      },
+    });
 
-  if (!customer) {
-    throw new NotFoundException(
-      'Cliente não encontrado para este usuário',
-    );
+    if (!customer) {
+      throw new NotFoundException('Cliente não encontrado para este usuário');
+    }
+
+    return this.findByCustomer(customer.id);
   }
-
-  return this.findByCustomer(customer.id);
-}
   async findByCustomer(customerId: number) {
     const cart = await this.prisma.cart.findUnique({
       where: {
@@ -62,18 +146,13 @@ export class CartsService {
     });
 
     if (!cart) {
-      throw new NotFoundException(
-        'Carrinho não encontrado',
-      );
+      throw new NotFoundException('Carrinho não encontrado');
     }
 
     return cart;
   }
 
-  async addItem(
-    customerId: number,
-    addCartItemDto: AddCartItemDto,
-  ) {
+  async addItem(customerId: number, addCartItemDto: AddCartItemDto) {
     const cart = await this.prisma.cart.findUnique({
       where: {
         customerId,
@@ -81,9 +160,7 @@ export class CartsService {
     });
 
     if (!cart) {
-      throw new NotFoundException(
-        'Carrinho não encontrado',
-      );
+      throw new NotFoundException('Carrinho não encontrado');
     }
 
     const product = await this.prisma.product.findUnique({
@@ -96,45 +173,32 @@ export class CartsService {
     });
 
     if (!product) {
-      throw new NotFoundException(
-        'Produto não encontrado',
-      );
+      throw new NotFoundException('Produto não encontrado');
     }
 
     if (!product.inventory) {
-      throw new BadRequestException(
-        'Produto não possui estoque',
-      );
+      throw new BadRequestException('Produto não possui estoque');
     }
 
-    if (
-      product.inventory.quantity <
-      addCartItemDto.quantity
-    ) {
+    if (product.inventory.quantity < addCartItemDto.quantity) {
       throw new BadRequestException(
         `Estoque insuficiente para ${product.name}`,
       );
     }
 
-    const existingItem =
-      await this.prisma.cartItem.findUnique({
-        where: {
-          cartId_productId: {
-            cartId: cart.id,
-            productId: addCartItemDto.productId,
-          },
+    const existingItem = await this.prisma.cartItem.findUnique({
+      where: {
+        cartId_productId: {
+          cartId: cart.id,
+          productId: addCartItemDto.productId,
         },
-      });
+      },
+    });
 
     if (existingItem) {
-      const newQuantity =
-        existingItem.quantity +
-        addCartItemDto.quantity;
+      const newQuantity = existingItem.quantity + addCartItemDto.quantity;
 
-      if (
-        product.inventory.quantity <
-        newQuantity
-      ) {
+      if (product.inventory.quantity < newQuantity) {
         throw new BadRequestException(
           `Estoque insuficiente para ${product.name}`,
         );

@@ -1,7 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
+  ParseIntPipe,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -20,6 +24,7 @@ import { AddCartItemDto } from './dto/add-cart-item.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
+import { UpdateCartItemDto } from './dto/update-cart-item.dto.js';
 
 import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface.js';
 
@@ -29,15 +34,12 @@ import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-requ
 @ApiTags('carts')
 @Controller('carts')
 export class CartsController {
-  constructor(
-    private readonly cartsService: CartsService,
-  ) {}
+  constructor(private readonly cartsService: CartsService) {}
 
   @Get('me')
   @ApiOperation({
     summary: 'Consultar meu carrinho',
-    description:
-      'Retorna o carrinho do cliente autenticado com seus produtos.',
+    description: 'Retorna o carrinho do cliente autenticado com seus produtos.',
   })
   @ApiResponse({
     status: 200,
@@ -86,8 +88,7 @@ export class CartsController {
   @Post('me/items')
   @ApiOperation({
     summary: 'Adicionar item ao carrinho',
-    description:
-      'Adiciona um item ao carrinho do cliente autenticado.',
+    description: 'Adiciona um item ao carrinho do cliente autenticado.',
   })
   @ApiResponse({
     status: 201,
@@ -120,9 +121,56 @@ export class CartsController {
     @Req() request: AuthenticatedRequest,
     @Body() addCartItemDto: AddCartItemDto,
   ) {
-    return this.cartsService.addItemByUser(
+    return this.cartsService.addItemByUser(request.user.id, addCartItemDto);
+  }
+
+  @Patch('me/items/:itemId')
+  @ApiOperation({
+    summary: 'Atualizar quantidade de item do carrinho',
+    description:
+      'Altera a quantidade de um produto no carrinho do cliente autenticado.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Quantidade atualizada.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Estoque insuficiente ou quantidade inválida.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Item ou carrinho não encontrado.',
+  })
+  updateItem(
+    @Req() request: AuthenticatedRequest,
+    @Param('itemId', ParseIntPipe) itemId: number,
+    @Body() updateCartItemDto: UpdateCartItemDto,
+  ) {
+    return this.cartsService.updateItemByUser(
       request.user.id,
-      addCartItemDto,
+      itemId,
+      updateCartItemDto,
     );
+  }
+
+  @Delete('me/items/:itemId')
+  @ApiOperation({
+    summary: 'Remover item do carrinho',
+    description: 'Remove um produto do carrinho do cliente autenticado.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Item removido.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Item ou carrinho não encontrado.',
+  })
+  removeItem(
+    @Req() request: AuthenticatedRequest,
+    @Param('itemId', ParseIntPipe) itemId: number,
+  ) {
+    return this.cartsService.removeItemByUser(request.user.id, itemId);
   }
 }
